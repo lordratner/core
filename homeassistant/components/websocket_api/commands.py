@@ -5,7 +5,7 @@ from collections.abc import Callable
 import datetime as dt
 from functools import lru_cache, partial
 import json
-from typing import Any, cast
+from typing import Any, Final, cast
 
 import voluptuous as vol
 
@@ -55,6 +55,9 @@ from .const import ERR_NOT_FOUND
 from .messages import construct_event_message, construct_result_message
 
 ALL_SERVICE_DESCRIPTIONS_JSON_CACHE = "websocket_api_all_service_descriptions_json"
+
+SOURCE_CONFIG_ENTRY: Final = "config_entry"
+SOURCE_PLATFORM_CONFIG: Final = "platform_config"
 
 
 @callback
@@ -572,6 +575,22 @@ async def handle_render_template(
     hass.loop.call_soon_threadsafe(info.async_refresh)
 
 
+def _serialize_entity_infos(
+    entity_infos: dict[str, entity.EntityInfo]
+) -> dict[str, Any]:
+    """Prepare a dict of EntityInfo for serialization.
+
+    This adds the source key which is needed by frontend.
+    """
+    result = {}
+    for entity_id, entity_info in entity_infos.items():
+        if "config_entry" in entity_info:
+            result[entity_id] = entity_info | {"source": SOURCE_CONFIG_ENTRY}
+        else:
+            result[entity_id] = entity_info | {"source": SOURCE_PLATFORM_CONFIG}
+    return result
+
+
 @callback
 @decorators.websocket_command(
     {vol.Required("type"): "entity/source", vol.Optional("entity_id"): [cv.entity_id]}
@@ -580,23 +599,23 @@ def handle_entity_source(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Handle entity source command."""
-    raw_sources = entity.entity_sources(hass)
+    all_entity_infos = entity.entity_sources(hass)
     entity_perm = connection.user.permissions.check_entity
 
     if "entity_id" not in msg:
         if connection.user.permissions.access_all_entities(POLICY_READ):
-            sources = raw_sources
+            entity_infos = all_entity_infos
         else:
-            sources = {
+            entity_infos = {
                 entity_id: source
-                for entity_id, source in raw_sources.items()
+                for entity_id, source in all_entity_infos.items()
                 if entity_perm(entity_id, POLICY_READ)
             }
 
-        connection.send_result(msg["id"], sources)
+        connection.send_result(msg["id"], _serialize_entity_infos(entity_infos))
         return
 
-    sources = {}
+    entity_infos = {}
 
     for entity_id in msg["entity_id"]:
         if not entity_perm(entity_id, POLICY_READ):
@@ -606,13 +625,13 @@ def handle_entity_source(
                 perm_category=CAT_ENTITIES,
             )
 
-        if (source := raw_sources.get(entity_id)) is None:
+        if (entity_info := all_entity_infos.get(entity_id)) is None:
             connection.send_error(msg["id"], ERR_NOT_FOUND, "Entity not found")
             return
 
-        sources[entity_id] = source
+        entity_infos[entity_id] = entity_info
 
-    connection.send_result(msg["id"], sources)
+    connection.send_result(msg["id"], _serialize_entity_infos(entity_infos))
 
 
 @decorators.websocket_command(

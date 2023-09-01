@@ -9,7 +9,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries, loader
 from homeassistant.components.device_automation import toggle_entity
-from homeassistant.components.websocket_api import const
+from homeassistant.components.websocket_api import commands as websocket_commands, const
 from homeassistant.components.websocket_api.auth import (
     TYPE_AUTH,
     TYPE_AUTH_OK,
@@ -19,7 +19,7 @@ from homeassistant.components.websocket_api.const import FEATURE_COALESCE_MESSAG
 from homeassistant.const import SIGNAL_BOOTSTRAP_INTEGRATIONS
 from homeassistant.core import Context, HomeAssistant, State, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr, entity
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import DATA_SETUP_TIME, async_setup_component
@@ -1473,6 +1473,9 @@ async def test_entity_source_admin(
         [MockEntity(name="Entity 1"), MockEntity(name="Entity 2")]
     )
 
+    platform.config_entry = MockConfigEntry()
+    await platform.async_add_entities([MockEntity(name="Entity 3")])
+
     # Fetch all
     await websocket_client.send_json({"id": 6, "type": "entity/source"})
 
@@ -1484,12 +1487,18 @@ async def test_entity_source_admin(
         "test_domain.entity_1": {
             "custom_component": False,
             "domain": "test_platform",
-            "source": entity.SOURCE_PLATFORM_CONFIG,
+            "source": websocket_commands.SOURCE_PLATFORM_CONFIG,
         },
         "test_domain.entity_2": {
             "custom_component": False,
             "domain": "test_platform",
-            "source": entity.SOURCE_PLATFORM_CONFIG,
+            "source": websocket_commands.SOURCE_PLATFORM_CONFIG,
+        },
+        "test_domain.entity_3": {
+            "config_entry": platform.config_entry.entry_id,
+            "custom_component": False,
+            "domain": "test_platform",
+            "source": websocket_commands.SOURCE_CONFIG_ENTRY,
         },
     }
 
@@ -1506,7 +1515,7 @@ async def test_entity_source_admin(
         "test_domain.entity_2": {
             "custom_component": False,
             "domain": "test_platform",
-            "source": entity.SOURCE_PLATFORM_CONFIG,
+            "source": websocket_commands.SOURCE_PLATFORM_CONFIG,
         },
     }
 
@@ -1527,12 +1536,12 @@ async def test_entity_source_admin(
         "test_domain.entity_1": {
             "custom_component": False,
             "domain": "test_platform",
-            "source": entity.SOURCE_PLATFORM_CONFIG,
+            "source": websocket_commands.SOURCE_PLATFORM_CONFIG,
         },
         "test_domain.entity_2": {
             "custom_component": False,
             "domain": "test_platform",
-            "source": entity.SOURCE_PLATFORM_CONFIG,
+            "source": websocket_commands.SOURCE_PLATFORM_CONFIG,
         },
     }
 
@@ -1568,7 +1577,7 @@ async def test_entity_source_admin(
         "test_domain.entity_2": {
             "custom_component": False,
             "domain": "test_platform",
-            "source": entity.SOURCE_PLATFORM_CONFIG,
+            "source": websocket_commands.SOURCE_PLATFORM_CONFIG,
         },
     }
 
