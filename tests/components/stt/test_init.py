@@ -506,8 +506,8 @@ async def test_default_engine_prefer_cloud(
         async_get_engine=AsyncMock(return_value=mock_provider),
     )
 
-    mock_provider_entity.url_path = "stt.cloud"
-    mock_provider_entity._attr_name = "Cloud"
+    mock_provider_entity.url_path = "stt.home_assistant_cloud"
+    mock_provider_entity._attr_name = "Home Assistant Cloud"
     mock_provider_entity._attr_unique_id = "cloud-speech-to-text"
 
     await mock_config_entry_setup(
@@ -518,7 +518,7 @@ async def test_default_engine_prefer_cloud(
     )
     await hass.async_block_till_done()
 
-    assert async_default_engine(hass) == "stt.cloud"
+    assert async_default_engine(hass) == "stt.home_assistant_cloud"
 
 
 async def test_get_engine_legacy(

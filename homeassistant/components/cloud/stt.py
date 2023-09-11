@@ -41,7 +41,7 @@ async def async_setup_entry(
 class CloudProviderEntity(SpeechToTextEntity):
     """NabuCasa speech API provider."""
 
-    _attr_name = "Cloud"
+    _attr_name = "Home Assistant Cloud"
     _attr_unique_id = "cloud-speech-to-text"
 
     def __init__(self, cloud: Cloud[CloudClient]) -> None:
